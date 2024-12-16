@@ -1,7 +1,7 @@
 import { mapGetBind, mapSetBind, randomString } from "../utilities/map";
 
 export class GraphNode<TNode> {
-	constructor(public id: symbol, public name: string, public data: TNode) {
+	constructor(public id: symbol, public name: string, public data: TNode, public group?: string) {
 	}
 
 	public getFromEdges<TEdge>(graph: Graph<TNode, TEdge>): GraphEdge<TEdge>[] {
@@ -80,6 +80,7 @@ export class Graph<TNode, TEdge> {
 		type JsonNode = {
 			id: string
 			name: string
+			group?: string
 		}
 		type JsonEdge = {
 			source: string
@@ -93,7 +94,8 @@ export class Graph<TNode, TEdge> {
 		for (const node of this.nodes) {
 			nodes.push({
 				id: mapGetBind(idToString, node.id, () => randomString()),
-				name: node.name
+				name: node.name,
+				group: node.group
 			})
 		}
 

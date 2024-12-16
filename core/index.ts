@@ -58,7 +58,7 @@ type AnyInjectionToken = InjectionToken<any>
 type AnyProviderNode = ProviderNode<any, AnyInjectionToken>
 
 export class Module {
-	constructor(public nodes: AnyProviderNode[]) {
+	constructor(public name: string, public nodes: AnyProviderNode[], public attached: Module[] = []) {
 	}
 
 	public print() {
@@ -68,7 +68,8 @@ export class Module {
 	}
 
 	public attach(other: Module): Module {
-		return new Module([...this.nodes, ...other.nodes])
+		this.attached.push(other);
+		return this;
 	}
 
 	public async start() {
@@ -83,12 +84,13 @@ export class Module {
 
 	public toGraph(): Graph<AnyProviderNode, null> {
 		const graphNodes = this.nodes.map((node) =>
-			new GraphNode<AnyProviderNode>(node.options.provides.id, node.options.provides.name, node)
+			new GraphNode<AnyProviderNode>(node.options.provides.id, node.options.provides.name, node, this.name)
 		)
 		const graphEdges = this.nodes.flatMap((node) =>
 			Object.values(node.options.dependsOn as Record<string, AnyInjectionToken>).map((injection) => new GraphEdge<null>(node.options.provides.id, injection.id, "requires", null))
 		)
-		return new Graph(graphNodes, graphEdges)
+		const current = new Graph(graphNodes, graphEdges)
+		return this.attached.reduce((graph, other) => graph.attach(other.toGraph()), current)
 	}
 }
 
