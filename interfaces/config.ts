@@ -7,6 +7,9 @@ export interface IConfig {
 	schema: {
 		path: string;
 	}
+	logger: {
+		syncSeconds: number;
+	}
 }
 export interface IConfigService {
 	getConfig(): IConfig

@@ -11,7 +11,7 @@ export class InjectionToken<_TResolver> {
 	}
 
 	public static node(name: string) {
-		return new InjectionToken<void>(name)
+		return new InjectionToken<StoppableService>(name)
 	}
 }
 
@@ -49,8 +49,27 @@ export class ProviderNode<
 	}
 }
 
-export abstract class BaseProvider<TServices> {
+export abstract class StoppableService {
+	callbacks: Set<() => void>
+	public onStop(callback: () => void) {
+		this.callbacks.add(callback)
+	}
+
+	public stop() {
+		for (const callback of this.callbacks.values()) {
+			try {
+				callback()
+			} catch (e) {
+				console.error("Failed to stop node", e)
+			}
+		}
+	}
+}
+
+
+export abstract class BaseProvider<TServices> extends StoppableService {
 	constructor(protected app: TServices) {
+		super()
 	}
 }
 
@@ -72,14 +91,16 @@ export class Module {
 		return this;
 	}
 
-	public async start() {
-		const container = new Map<symbol, InjectionToken<any>>();
+	public async start(): Promise<Application> {
+		const container = new Map<symbol, any>();
 		const topological = this.toGraph().toTopological()
 		for (const node of topological) {
 			const parameters = dependsOnToParameters(node.data.options.dependsOn, container);
 			const provider = await node.data.options.provider(parameters)
 			addProviderToContainer(node.data.options.provides, provider, container)
 		}
+
+		return new Application(container)
 	}
 
 	public toGraph(): Graph<AnyProviderNode, null> {
@@ -91,6 +112,28 @@ export class Module {
 		)
 		const current = new Graph(graphNodes, graphEdges)
 		return this.attached.reduce((graph, other) => graph.attach(other.toGraph()), current)
+	}
+}
+
+export class Application {
+	constructor(private container: Map<symbol, any>) {
+	}
+
+	public get<TResolver>(injection: InjectionToken<TResolver>): TResolver {
+		const exists = this.container.has(injection.id)
+		if (!exists) {
+			throw new Error("Injection " + injection.name + " not provided")
+		}
+
+		return this.container.get(injection.id)!
+	}
+
+	public stop() {
+		for (const provider of this.container.values()) {
+			if (provider instanceof StoppableService) {
+				provider.stop()
+			}
+		}
 	}
 }
 
