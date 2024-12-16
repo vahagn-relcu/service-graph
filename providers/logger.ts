@@ -41,14 +41,18 @@ class LoggerProvider extends BaseProvider<LoggerProviderOptions> implements ILog
 type DatabaseLoggerProviderOptions = WithLoggerService & WithDatabaseService & WithConfigService & WithSchedulerService
 class DatabaseLoggerProvider extends BaseProvider<DatabaseLoggerProviderOptions> {
 	public static async init(module: DatabaseLoggerProviderOptions) {
-		const syncMillis = module.config.getConfig().logger.syncSeconds * 1000
 		const node = new DatabaseLoggerProvider(module)
-		module.scheduler.schedule(node, async () => {
-			const logs = module.logger.collect()
-			await module.database.callSql(`insert into logs (texts) values (${logs})`)
-		}, syncMillis)
+
+		const syncMillis = module.config.getConfig().logger.syncSeconds * 1000
+		module.scheduler.schedule(node, "handleSave", syncMillis)
+
 		node.onStop(() => console.error("Logs not saved to database", module.logger.collect()))
 
 		return node
+	}
+
+	public async handleSave() {
+		const logs = this.app.logger.collect()
+		await this.app.database.callSql(`insert into logs (texts) values (${logs})`)
 	}
 }

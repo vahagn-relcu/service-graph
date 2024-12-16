@@ -50,7 +50,7 @@ export class ProviderNode<
 }
 
 export abstract class StoppableService {
-	callbacks: Set<() => void>
+	private callbacks: Set<() => void>
 	public onStop(callback: () => void) {
 		this.callbacks.add(callback)
 	}

@@ -1,5 +1,5 @@
 import { BaseProvider, ProviderNode, StoppableService } from "../core";
-import { ISchedulerService, scheduler } from "../interfaces/scheduler";
+import { ISchedulerService, scheduler, SchedulerCallbackName } from "../interfaces/scheduler";
 
 export const schedulerProvider = new ProviderNode({
 	dependsOn: {},
@@ -15,9 +15,10 @@ class SchedulerProvider extends BaseProvider<SchedulerProviderOptions> implement
 		return new SchedulerProvider(module)
 	}
 
-	public schedule(node: StoppableService, callback: () => Promise<void>, intervalMillis: number): void {
-		node.onStop
-
-	    
+	public schedule<IService extends StoppableService>(node: IService, callback: SchedulerCallbackName<IService>, intervalMillis: number): void {
+		const interval = setInterval(() => {
+			(node[callback] as () => void)()
+		}, intervalMillis)
+		node.onStop(() => clearInterval(interval))
 	}
 }
