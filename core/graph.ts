@@ -24,6 +24,14 @@ export class GraphEdge<TEdge> {
 	public getToNode<TNode>(graph: Graph<TNode, TEdge>): GraphNode<TNode> {
 		return graph.getNode(this.to)
 	}
+
+	public withData<TNewEdge>(data: TNewEdge): GraphEdge<TNewEdge> {
+		return new GraphEdge(this.from, this.to, this.name, data)
+	}
+
+	public opposite(): GraphEdge<TEdge> {
+		return new GraphEdge(this.to, this.from, this.name, this.data)
+	}
 }
 
 type TopologicalDependency = "independent" | "requires" | "provides"
@@ -72,8 +80,26 @@ export class Graph<TNode, TEdge> {
 	}
 
 	public toTopological(checker: (edge: TEdge) => TopologicalDependency = () => "requires"): GraphNode<TNode>[] {
-		// TODO
-		return [...this.nodeMap.values()]
+		function isDefined<T>(value: T | null | undefined): value is NonNullable<T> {
+			return value !== null && value !== undefined
+		}
+
+		const edges = this.edges.map((edge) => {
+			const relation = checker(edge.data)
+			switch (relation) {
+				case "independent":
+					return null
+				case "requires":
+					return edge.withData(null)
+				case "provides":
+					return edge.opposite().withData(null)
+			}
+		}).filter(isDefined)
+		const graph: Graph<TNode, null> = new Graph(this.nodes, edges)
+		return Graph.toTopological(graph)
+	}
+
+	private static toTopological<TNode>(graph: Graph<TNode, null>): GraphNode<TNode>[] {
 	}
 
 	public toJSON() {

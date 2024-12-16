@@ -41,7 +41,8 @@ export class ProviderNode<
 		TDeps extends Record<string, InjectionToken<any>>,
 		TExports extends InjectionToken<any>,
 	>(options: ProviderNodeOptions<TDeps, TExports>) {
-		return new ProviderNode(options);
+		const next = new ProviderNode(options);
+		return [this, next]
 	}
 
 	public requires() {
@@ -77,7 +78,14 @@ type AnyInjectionToken = InjectionToken<any>
 type AnyProviderNode = ProviderNode<any, AnyInjectionToken>
 
 export class Module {
-	constructor(public name: string, public nodes: AnyProviderNode[], public attached: Module[] = []) {
+	public nodes: AnyProviderNode[]
+	constructor(public name: string, nodes: (AnyProviderNode | AnyProviderNode[])[], public attached: Module[] = []) {
+		this.nodes = nodes.flatMap((node) => {
+			if (Array.isArray(node)) {
+				return node
+			}
+			return [node]
+		})
 	}
 
 	public print() {
