@@ -25,3 +25,16 @@ export function mapGetBind<TKey, TValue>(
 		return value
 	}
 }
+
+export function randomString(length = 12) {
+	const letters = [
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+	]
+
+	return new Array(length).fill(null).map(() => randomChoice(letters)).join("")
+}
+
+export function randomChoice<T>(array: T[]): T {
+	const index = Math.floor(Math.random() * array.length)
+	return array[index]
+}

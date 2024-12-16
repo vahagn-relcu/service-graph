@@ -1,5 +1,4 @@
-import { mapGetBind, mapSetBind } from "../utilities/map";
-import { randomUUID } from "crypto"
+import { mapGetBind, mapSetBind, randomString } from "../utilities/map";
 
 export class GraphNode<TNode> {
 	constructor(public id: symbol, public name: string, public data: TNode) {
@@ -93,7 +92,7 @@ export class Graph<TNode, TEdge> {
 
 		for (const node of this.nodes) {
 			nodes.push({
-				id: mapGetBind(idToString, node.id, () => randomUUID()),
+				id: mapGetBind(idToString, node.id, () => randomString()),
 				name: node.name
 			})
 		}
