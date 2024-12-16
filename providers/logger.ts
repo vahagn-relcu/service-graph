@@ -47,6 +47,7 @@ class DatabaseLoggerProvider extends BaseProvider<DatabaseLoggerProviderOptions>
 			const logs = module.logger.collect()
 			await module.database.callSql(`insert into logs (texts) values (${logs})`)
 		}, syncMillis)
+		node.onStop(() => console.error("Logs not saved to database", module.logger.collect()))
 
 		return node
 	}
