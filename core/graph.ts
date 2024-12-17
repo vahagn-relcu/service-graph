@@ -79,7 +79,7 @@ export class Graph<TNode, TEdge> {
 		return new Graph(nodes, edges)
 	}
 
-	public toTopological(checker: (edge: TEdge) => TopologicalDependency = () => "requires"): GraphNode<TNode>[] {
+	public toTopological(checker: (edge: TEdge) => TopologicalDependency = () => "requires"): GraphNode<TNode>[][] {
 		function isDefined<T>(value: T | null | undefined): value is NonNullable<T> {
 			return value !== null && value !== undefined
 		}
@@ -99,7 +99,29 @@ export class Graph<TNode, TEdge> {
 		return Graph.toTopological(graph)
 	}
 
-	private static toTopological<TNode>(graph: Graph<TNode, null>): GraphNode<TNode>[] {
+	private static toTopological<TNode>(graph: Graph<TNode, null>): GraphNode<TNode>[][] {
+		function isSatisfied(node: GraphNode<TNode>) {
+			const alreadySatisfied = satisfiedNodes.has(node.id)
+			if (alreadySatisfied) {
+				return false
+			}
+			const unsatisfiedNode = node.getFromEdges(graph).map((edge) => edge.to).find((id) => !satisfiedNodes.has(id))
+			return unsatisfiedNode === undefined
+		}
+
+		const result: GraphNode<TNode>[][] = []
+		const satisfiedNodes = new Set<symbol>()
+		while (graph.nodes.length !== satisfiedNodes.size) {
+			const nextNodes = graph.nodes.filter(isSatisfied)
+			if (nextNodes.length === 0) {
+				const names = graph.nodes.filter((node) => !satisfiedNodes.has(node.id)).map((node) => node.name).join(" ")
+				throw new Error("These nodes have a deadlock " + names)
+			}
+			result.push(nextNodes)
+			nextNodes.forEach((node) => satisfiedNodes.add(node.id))
+		}
+
+		return result
 	}
 
 	public toJSON() {

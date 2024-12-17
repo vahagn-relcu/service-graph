@@ -51,7 +51,7 @@ export class ProviderNode<
 }
 
 export abstract class StoppableService {
-	private callbacks: Set<() => void>
+	private callbacks: Set<() => void> = new Set()
 	public onStop(callback: () => void) {
 		this.callbacks.add(callback)
 	}
@@ -100,15 +100,20 @@ export class Module {
 	}
 
 	public async start(): Promise<Application> {
-		const container = new Map<symbol, any>();
+		const app = new Application();
 		const topological = this.toGraph().toTopological()
-		for (const node of topological) {
-			const parameters = dependsOnToParameters(node.data.options.dependsOn, container);
-			const provider = await node.data.options.provider(parameters)
-			addProviderToContainer(node.data.options.provides, provider, container)
+		console.log("top", topological.map(t => t.map(x => x.name)))
+		for (const nodes of topological) {
+			await Promise.all(
+				nodes.map(async (node) => {
+					const parameters = app.getParameters(node.data.options.dependsOn);
+					const provider = await node.data.options.provider(parameters)
+					app.add(node.data.options.provides, provider)
+				})
+			)
 		}
 
-		return new Application(container)
+		return app
 	}
 
 	public toGraph(): Graph<AnyProviderNode, null> {
@@ -124,7 +129,9 @@ export class Module {
 }
 
 export class Application {
-	constructor(private container: Map<symbol, any>) {
+	private container: Map<symbol, any>
+	constructor() {
+		this.container = new Map()
 	}
 
 	public get<TResolver>(injection: InjectionToken<TResolver>): TResolver {
@@ -136,6 +143,29 @@ export class Application {
 		return this.container.get(injection.id)!
 	}
 
+	public add<TResolver>(injection: InjectionToken<TResolver>, provider: TResolver) {
+		const injectionExists = this.container.has(injection.id)
+		if (injectionExists) {
+			throw new Error("Adding same injection twice")
+		}
+
+		this.container.set(injection.id, provider)
+	}
+
+	public getParameters(dependsOn: Record<string, InjectionToken<any>>) {
+		const parameterEntries = Object.entries(dependsOn).map(([key, injection]) => {
+			if (!this.container.has(injection.id)) {
+				throw new Error("Provider not found for " + injection.name)
+			}
+
+			const provider = this.container.get(injection.id)
+			return [key, provider]
+		})
+		return Object.fromEntries(
+			parameterEntries
+		)
+	}
+
 	public stop() {
 		for (const provider of this.container.values()) {
 			if (provider instanceof StoppableService) {
@@ -143,27 +173,4 @@ export class Application {
 			}
 		}
 	}
-}
-
-function dependsOnToParameters(dependsOn: Record<string, InjectionToken<any>>, container: Map<symbol, any>): Record<string, any> {
-	const parameterEntries = Object.entries(dependsOn).map(([key, injection]) => {
-		if (!container.has(injection.id)) {
-			throw new Error("Provider not found for " + injection.name)
-		}
-
-		const provider = container.get(injection.id)
-		return [key, provider]
-	})
-	return Object.fromEntries(
-		parameterEntries
-	)
-}
-
-function addProviderToContainer(injection: InjectionToken<any>, provider: any, container: Map<symbol, any>): void {
-	const injectionExists = container.has(injection.id)
-	if (injectionExists) {
-		throw new Error("Adding same injection twice")
-	}
-
-	container.set(injection.id, provider)
 }

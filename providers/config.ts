@@ -23,6 +23,9 @@ class ConfigProvider extends BaseProvider<ConfigProviderOptions> implements ICon
 				},
 				schema: {
 					path: "./schemas"
+				},
+				logger: {
+					syncSeconds: 10
 				}
 			},
 		})
